@@ -2,8 +2,19 @@
 ini_set('memory_limit', '8G');
 require 'vendor/autoload.php';
 
-$tes = new RSSAnime();
-print_r($tes->otakudesu());
+$info = getopt("", ["doing:","resolution:","link_source:"]);
+
+$isdoing         = @$info['doing'];
+$set_resolution  = @$info['resolution'];
+$set_link_source = @$info['link_source'];
+
+$GoRSS = new RSSAnime();
+
+if ($isdoing == "tes") {
+    print_r($GoRSS->otakudesu());
+} elseif ($isdoing == "dl") {
+    $GoRSS->dl($set_resolution, $set_link_source);
+}
 
 /*
 $n = "595030%2";
@@ -17,10 +28,73 @@ echo(($nt[0] % $nt[1]) + ($bt[0] % $bt[1]) + $z - 3);
 
 class RSSAnime
 {
-    public function link($url){
+    private $DB_DL;
+    private $host = "mongodb://localhost:27017";
 
+    public function __construct($config = null)
+    {
+        //TODO: add config
+        $this->db = new MongoDB\Client($this->host);
+        $this->DB_DL  = $this->db->dl->link;
+    }
+
+    public function dl($set_resolution="", $set_link_source="", $limit_dl=1)
+    {     
+        $source = array();
+        $source['source']['otakudesu'] = $this->otakudesu();
+        // Get Source
+        foreach ($source['source'] as $gsource) {
+            // Get episode
+            foreach ($gsource['data'] as $gep) {
+                // Get Format
+                foreach ($gep['episode'] as $gdetail) {
+                    $name = $gdetail['name'];
+                    $link = $gdetail['link'];
+                    echo "-> $name ($link)" . PHP_EOL;
+                    // Format file
+                    usort($gdetail['DL'], function ($a, $b) {
+                        return $b['resolution'] <=> $a['resolution'];
+                    });
+                    $tmp_limit_dl=0;
+                    foreach ($gdetail['DL'] as $gdl) {
+                        $format = $gdl['format'];
+                        $resolu = $gdl['resolution'];
+                        // Fiter Format
+                        if (!empty($set_resolution)) {
+                            $set_resolutionn  = explode(',', $set_resolution);
+                            if (!$this->contains($resolu, $set_resolutionn)) {
+                                continue;
+                            }
+                        }
+                        if ($tmp_limit_dl >= $limit_dl) {
+                            break;
+                        }
+                        echo "--> $format / $resolu" . PHP_EOL;
+                        // Source link
+                        foreach ($gdl['link'] as $glk) {
+                            $lname = $glk['name'];
+                            $llink = $glk['link'];
+                            // Fiter link
+                            if (!empty($set_link_source)) {
+                                $set_link_sourcen = explode(',', $set_link_source);
+                                if (@!$this->contains($lname, $set_link_sourcen)) {
+                                    continue;
+                                }
+                            }
+                            echo "---> $lname ($llink)" . PHP_EOL;
+                        }
+                        $tmp_limit_dl++;
+                    }
+                }
+            }
+        }
+        //print_r($source);
+    }
+
+    public function link($url)
+    {
         if (strpos($url, 'zippyshare') !== false) {
-          return $this->zippyshare($url);
+            return $this->zippyshare($url);
         }
 
         return "";
@@ -58,7 +132,7 @@ class RSSAnime
         $url = str_replace("/file.html", "", $url);
         $url_real = "$url/$formula/$fileName";
         $data['dl']=$url_real;
-        $data['formula']=$formula;        
+        $data['formula']=$formula;
         return $data;
     }
     public function rapidleech($url="https://www87.zippyshare.com/v/SGTX2ZT5/file.html", $server="https://s2.rapidleech.gq")
@@ -81,18 +155,23 @@ class RSSAnime
     {
         $data = array();
 
+        $limit_ongoing=3;
+        $limit_episode=1;
+
         // GET ONGOING
         $raw = $this->SEND("https://otakudesu.info/ongoing-anime/");
         $document = voku\helper\HtmlDomParser::str_get_html($raw['body']);
         $list = $document->find("div.venz > ul > li");
         $count=0;
         foreach ($list as $anime) {
-            $nama  = $anime->find("h2[class=jdlflm]")[0]->plaintext;
-            //$ep    = $anime->find("div[class=epz]")[0]->plaintext;
+            if ($count >= $limit_ongoing) {
+                break;
+            }
+            $name  = $anime->find("h2[class=jdlflm]")[0]->plaintext;
+            $epz   = $anime->find("div[class=epz]")[0]->plaintext;
             $link  = $anime->find("a")[0]->getAttribute('href');
-            //$data['data'][$count]['rawtes']=$get_fd;
-            $data['data'][$count]['nama']=$nama;
-            //$data['data'][$count]['episode']=$ep;
+            $data['data'][$count]['name']=$name;
+            $data['data'][$count]['ep_num']=$epz;
             $data['data'][$count]['link']=$link;
             // GET LIST EPISODE
             $raw_ep  = $this->SEND($link);
@@ -100,6 +179,9 @@ class RSSAnime
             $get_ep   = $fd_ep->find("div.episodelist > ul > li");
             $countep = 0;
             foreach ($get_ep as $ep) {
+                if ($countep >= $limit_episode) {
+                    break;
+                }
                 $glink = $ep->find("a")[0];
                 $nama_ep  = $glink->plaintext;
                 $link_ep  = $glink->getAttribute('href');
@@ -113,7 +195,9 @@ class RSSAnime
                 foreach ($get_dl as $dl) {
                     $type      = $dl->find("strong")[0]->plaintext;
                     $ukur      = $dl->find("i")[0]->plaintext;
-                    $data['data'][$count]['episode'][$countep]['DL'][$countdl]['format']=$type;
+                    $ntype     = explode(' ', $type);
+                    $data['data'][$count]['episode'][$countep]['DL'][$countdl]['format']=$ntype[0];
+                    $data['data'][$count]['episode'][$countep]['DL'][$countdl]['resolution']=intval($ntype[1]);
                     $data['data'][$count]['episode'][$countep]['DL'][$countdl]['size']=$ukur;
                     // GET LINK DOWNLOAD
                     $dl_linl   = $dl->find("a");
@@ -123,20 +207,29 @@ class RSSAnime
                         $linkdl = $zglink->getAttribute('href');
                         $data['data'][$count]['episode'][$countep]['DL'][$countdl]['link'][$countlink]['name']=$nmser;
                         $data['data'][$count]['episode'][$countep]['DL'][$countdl]['link'][$countlink]['link']=$linkdl;
-                        $data['data'][$count]['episode'][$countep]['DL'][$countdl]['link'][$countlink]['dl']=$this->link($linkdl);
+                        //$data['data'][$count]['episode'][$countep]['DL'][$countdl]['link'][$countlink]['dl']=$this->link($linkdl);
                         $countlink++;
                         //break;
                     }
                     $countdl++;
-                    break;
+                    //break;
                 }
                 $countep++;
-                break;
+                //break;
             }
             $count++;
-            break;
+            //break;
         }
         return $data;
+    }
+    private function contains($str, array $arr)
+    {
+        foreach ($arr as $a) {
+            if (strstr($str, $a) !== false) {
+                return true;
+            }
+        }
+        return false;
     }
     private function cut_str($str, $left, $right)
     {
