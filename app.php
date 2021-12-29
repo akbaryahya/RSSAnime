@@ -5,8 +5,78 @@ require 'vendor/autoload.php';
 $tes = new RSSAnime();
 print_r($tes->otakudesu());
 
+/*
+$n = "595030%2";
+$b = "595030%3";
+$z = "595033";
+$nt = explode('%', $n);
+$bt = explode('%', $b);
+echo(($nt[0] % $nt[1]) + ($bt[0] % $bt[1]) + $z - 3);
+*/
+//nilai asli 595031
+
 class RSSAnime
 {
+    public function link($url){
+
+        if (strpos($url, 'zippyshare') !== false) {
+          return $this->zippyshare($url);
+        }
+
+        return "";
+    }
+    public function zippyshare($url="https://www87.zippyshare.com/v/SGTX2ZT5/file.html")
+    {
+        $data= array();
+
+        $data['url']=$url;
+
+        // GET POST
+        $raw = $this->SEND($url);
+        $raw_body = $raw['body'];
+
+        // GET HTML
+        $raw_linkz = voku\helper\HtmlDomParser::str_get_html($raw_body);
+        $javaScript = $raw_linkz->find("#lrbox > div:nth-child(2) > div:nth-child(2) > div > script")[0]->plaintext;
+        $fileName   = $raw_linkz->find("#lrbox > div:nth-child(2) > div:nth-child(1) > font:nth-child(4)")[0]->plaintext;
+
+        $data['fileName']=$fileName;
+        //$data['script']=$javaScript;
+
+        // formula javaScript (fix?)
+        $n = $this->cut_str($javaScript, "var n = ", ';');
+        $b = $this->cut_str($javaScript, "var b = ", ';');
+        $z = $this->cut_str($javaScript, "var z = ", ';');
+        //$data['n']=$n;
+        //$data['b']=$b;
+        //$data['z']=$z;
+        $nt = explode('%', $n);
+        $bt = explode('%', $b);
+        $formula = (($nt[0] % $nt[1]) + ($bt[0] % $bt[1]) + $z - 3);
+
+        $url = str_replace("/v/", "/d/", $url);
+        $url = str_replace("/file.html", "", $url);
+        $url_real = "$url/$formula/$fileName";
+        $data['dl']=$url_real;
+        $data['formula']=$formula;        
+        return $data;
+    }
+    public function rapidleech($url="https://www87.zippyshare.com/v/SGTX2ZT5/file.html", $server="https://s2.rapidleech.gq")
+    {
+        $DATA = http_build_query([
+            "audl" => "doum",
+            "link" => $url,
+           // "cookie"=>"%85%F7%88%5Bv%F3d%EF%8Btif%D8%1D%A3%83T%FA%EA%0F%96%AF%D9%D9%5C%28%22%C1%18%98%7D%3F%9E6%0F%C5%97%1C%23%96%22%8F%3D%FF%90%C8%02%DF%13s%C0%A6%84%07%CA-%C8%BEk%EFn%FD%09%06%95%26%01%EA%A6%24%E3%E6",
+           // "cookie_encrypted"=>1,
+           // "referer"=>$url,
+            "cleanname"=>1
+        ]);
+        $raw = $this->SEND($server."/index.php", array(
+            'metode' => "GET",
+            'post' => $DATA
+        ));
+        return $raw;
+    }
     public function otakudesu()
     {
         $data = array();
@@ -42,7 +112,7 @@ class RSSAnime
                 $countdl=0;
                 foreach ($get_dl as $dl) {
                     $type      = $dl->find("strong")[0]->plaintext;
-                    $ukur      = $dl->find("i")[0]->plaintext;                    
+                    $ukur      = $dl->find("i")[0]->plaintext;
                     $data['data'][$count]['episode'][$countep]['DL'][$countdl]['format']=$type;
                     $data['data'][$count]['episode'][$countep]['DL'][$countdl]['size']=$ukur;
                     // GET LINK DOWNLOAD
@@ -53,9 +123,10 @@ class RSSAnime
                         $linkdl = $zglink->getAttribute('href');
                         $data['data'][$count]['episode'][$countep]['DL'][$countdl]['link'][$countlink]['name']=$nmser;
                         $data['data'][$count]['episode'][$countep]['DL'][$countdl]['link'][$countlink]['link']=$linkdl;
+                        $data['data'][$count]['episode'][$countep]['DL'][$countdl]['link'][$countlink]['dl']=$this->link($linkdl);
                         $countlink++;
                         //break;
-                    }                    
+                    }
                     $countdl++;
                     break;
                 }
@@ -67,7 +138,15 @@ class RSSAnime
         }
         return $data;
     }
-    public function get_headers_from_curl_response($headerContent)
+    private function cut_str($str, $left, $right)
+    {
+        $str = substr(stristr($str, $left), strlen($left));
+        $leftLen = strlen(stristr($str, $right));
+        $leftLen = $leftLen ? -($leftLen) : strlen($str);
+        $str = substr($str, 0, $leftLen);
+        return $str;
+    }
+    private function get_headers_from_curl_response($headerContent)
     {
         $headers = array();
         $arrRequests = explode("\r\n\r\n", $headerContent);
@@ -83,7 +162,7 @@ class RSSAnime
         }
         return $headers;
     }
-    public function SEND($url, $config = array())
+    private function SEND($url, $config = array())
     {
         $url = str_replace(' ', '%20', $url);
         $data = array();
