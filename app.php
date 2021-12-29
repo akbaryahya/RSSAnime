@@ -52,6 +52,7 @@ class RSSAnime
             // Get episode
             foreach ($gsource['data'] as $gep) {
                 // Get Format
+                //print_r($gep);
                 $name_nm = $gep['name'];
                 $name_nx = mb_ereg_replace("([^\w\s\d\-_~,;\[\]\(\).])", '', $name_nm);
                 foreach ($gep['episode'] as $gdetail) {
@@ -96,7 +97,7 @@ class RSSAnime
                                     $fileName = @$setpo['fileName'];
                                     echo "----> DL: $gtrealx ($fileName)" . PHP_EOL;
                                     $linkfd = "dl/$name_nx/";
-                                    if (!file_exists($linkfd )) {
+                                    if (!file_exists($linkfd)) {
                                         echo "----> DL: No Found Folder so Make it: $name_nx" . PHP_EOL;
                                         mkdir($linkfd, 0777, true);
                                     }
@@ -104,7 +105,7 @@ class RSSAnime
                                     if (!file_exists($spot)) {
                                         $dw = new Downloader($gtrealx, $spot);
                                         $dw->download();
-                                    }else{
+                                    } else {
                                         echo "----> DL: file already exists" . PHP_EOL;
                                     }
                                 } else {
@@ -210,6 +211,9 @@ class RSSAnime
                 }
                 $glink = $ep->find("a")[0];
                 $nama_ep  = $glink->plaintext;
+                if (strpos($nama_ep, 'BATCH') !== false) {
+                    continue;
+                }
                 $link_ep  = $glink->getAttribute('href');
                 $data['data'][$count]['episode'][$countep]['name']=$nama_ep;
                 $data['data'][$count]['episode'][$countep]['link']=$link_ep;
