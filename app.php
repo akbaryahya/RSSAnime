@@ -1,19 +1,24 @@
 <?php
 ini_set('memory_limit', '8G');
 require 'vendor/autoload.php';
+require 'lib/tool.php';
 
-$info = getopt("", ["doing:","resolution:","link_source:"]);
+$info = getopt("", ["doing:","resolution:","link_source:",'limit_ongoing:','limit_dl:','autodl:']);
 
 $isdoing         = @$info['doing'];
 $set_resolution  = @$info['resolution'];
 $set_link_source = @$info['link_source'];
+$set_autodl      = @$info['autodl'] ?: false;
+
+$set_limit_ongoing     = @$info['limit_ongoing'] ?: 1;
+$set_limit_dl          = @$info['limit_dl'] ?: 1;
 
 $GoRSS = new RSSAnime();
 
 if ($isdoing == "tes") {
     print_r($GoRSS->otakudesu());
 } elseif ($isdoing == "dl") {
-    $GoRSS->dl($set_resolution, $set_link_source);
+    $GoRSS->dl($set_resolution, $set_link_source, $set_limit_dl, $set_limit_ongoing, $set_autodl);
 }
 
 /*
@@ -38,15 +43,17 @@ class RSSAnime
         $this->DB_DL  = $this->db->dl->link;
     }
 
-    public function dl($set_resolution="", $set_link_source="", $limit_dl=1)
-    {     
+    public function dl($set_resolution="", $set_link_source="", $set_limit_dl=1, $set_limit_ongoing=1, $set_autodl=false)
+    {
         $source = array();
-        $source['source']['otakudesu'] = $this->otakudesu();
+        $source['source']['otakudesu'] = $this->otakudesu($set_limit_ongoing);
         // Get Source
         foreach ($source['source'] as $gsource) {
             // Get episode
             foreach ($gsource['data'] as $gep) {
                 // Get Format
+                $name_nm = $gep['name'];
+                $name_nx = mb_ereg_replace("([^\w\s\d\-_~,;\[\]\(\).])", '', $name_nm);
                 foreach ($gep['episode'] as $gdetail) {
                     $name = $gdetail['name'];
                     $link = $gdetail['link'];
@@ -62,11 +69,11 @@ class RSSAnime
                         // Fiter Format
                         if (!empty($set_resolution)) {
                             $set_resolutionn  = explode(',', $set_resolution);
-                            if (!$this->contains($resolu, $set_resolutionn)) {
+                            if (!contains($resolu, $set_resolutionn)) {
                                 continue;
                             }
                         }
-                        if ($tmp_limit_dl >= $limit_dl) {
+                        if ($tmp_limit_dl >= $set_limit_dl) {
                             break;
                         }
                         echo "--> $format / $resolu" . PHP_EOL;
@@ -77,18 +84,39 @@ class RSSAnime
                             // Fiter link
                             if (!empty($set_link_source)) {
                                 $set_link_sourcen = explode(',', $set_link_source);
-                                if (@!$this->contains($lname, $set_link_sourcen)) {
+                                if (!contains($lname, $set_link_sourcen)) {
                                     continue;
                                 }
                             }
                             echo "---> $lname ($llink)" . PHP_EOL;
+                            if ((bool)$set_autodl == true) {
+                                $setpo   = @$this->link($llink);
+                                $gtrealx = @$setpo['dl'];
+                                if (!empty($gtrealx)) {
+                                    $fileName = @$setpo['fileName'];
+                                    echo "----> DL: $gtrealx ($fileName)" . PHP_EOL;
+                                    $linkfd = "dl/$name_nx/";
+                                    if (!file_exists($linkfd )) {
+                                        echo "----> DL: No Found Folder so Make it: $name_nx" . PHP_EOL;
+                                        mkdir($linkfd, 0777, true);
+                                    }
+                                    $spot=$linkfd.$fileName;
+                                    if (!file_exists($spot)) {
+                                        $dw = new Downloader($gtrealx, $spot);
+                                        $dw->download();
+                                    }else{
+                                        echo "----> DL: file already exists" . PHP_EOL;
+                                    }
+                                } else {
+                                    echo "----> DL: No Found" . PHP_EOL;
+                                }
+                            }
                         }
                         $tmp_limit_dl++;
                     }
                 }
             }
         }
-        //print_r($source);
     }
 
     public function link($url)
@@ -102,35 +130,36 @@ class RSSAnime
     public function zippyshare($url="https://www87.zippyshare.com/v/SGTX2ZT5/file.html")
     {
         $data= array();
-
         $data['url']=$url;
+        $url_real="";
 
         // GET POST
-        $raw = $this->SEND($url);
-        $raw_body = $raw['body'];
+        $raw = SEND($url);
+        if ($raw['code']==200) {
+            $raw_body = $raw['body'];
+            // GET HTML
+            $raw_linkz = voku\helper\HtmlDomParser::str_get_html($raw_body);
+            $javaScript = $raw_linkz->find("#lrbox > div:nth-child(2) > div:nth-child(2) > div > script")[0]->plaintext;
+            $fileName   = $raw_linkz->find("#lrbox > div:nth-child(2) > div:nth-child(1) > font:nth-child(4)")[0]->plaintext;
 
-        // GET HTML
-        $raw_linkz = voku\helper\HtmlDomParser::str_get_html($raw_body);
-        $javaScript = $raw_linkz->find("#lrbox > div:nth-child(2) > div:nth-child(2) > div > script")[0]->plaintext;
-        $fileName   = $raw_linkz->find("#lrbox > div:nth-child(2) > div:nth-child(1) > font:nth-child(4)")[0]->plaintext;
+            $data['fileName']=$fileName;
+            //$data['script']=$javaScript;
 
-        $data['fileName']=$fileName;
-        //$data['script']=$javaScript;
+            // formula javaScript (fix?)
+            $n = cut_str($javaScript, "var n = ", ';');
+            $b = cut_str($javaScript, "var b = ", ';');
+            $z = cut_str($javaScript, "var z = ", ';');
+            //$data['n']=$n;
+            //$data['b']=$b;
+            //$data['z']=$z;
+            $nt = explode('%', $n);
+            $bt = explode('%', $b);
+            $formula = (($nt[0] % $nt[1]) + ($bt[0] % $bt[1]) + $z - 3);
 
-        // formula javaScript (fix?)
-        $n = $this->cut_str($javaScript, "var n = ", ';');
-        $b = $this->cut_str($javaScript, "var b = ", ';');
-        $z = $this->cut_str($javaScript, "var z = ", ';');
-        //$data['n']=$n;
-        //$data['b']=$b;
-        //$data['z']=$z;
-        $nt = explode('%', $n);
-        $bt = explode('%', $b);
-        $formula = (($nt[0] % $nt[1]) + ($bt[0] % $bt[1]) + $z - 3);
-
-        $url = str_replace("/v/", "/d/", $url);
-        $url = str_replace("/file.html", "", $url);
-        $url_real = "$url/$formula/$fileName";
+            $url = str_replace("/v/", "/d/", $url);
+            $url = str_replace("/file.html", "", $url);
+            $url_real = "$url/$formula/$fileName";
+        }
         $data['dl']=$url_real;
         $data['formula']=$formula;
         return $data;
@@ -145,21 +174,18 @@ class RSSAnime
            // "referer"=>$url,
             "cleanname"=>1
         ]);
-        $raw = $this->SEND($server."/index.php", array(
+        $raw = SEND($server."/index.php", array(
             'metode' => "GET",
             'post' => $DATA
         ));
         return $raw;
     }
-    public function otakudesu()
+    public function otakudesu($limit_ongoing=3, $limit_episode=1)
     {
         $data = array();
 
-        $limit_ongoing=3;
-        $limit_episode=1;
-
         // GET ONGOING
-        $raw = $this->SEND("https://otakudesu.info/ongoing-anime/");
+        $raw = SEND("https://otakudesu.info/ongoing-anime/");
         $document = voku\helper\HtmlDomParser::str_get_html($raw['body']);
         $list = $document->find("div.venz > ul > li");
         $count=0;
@@ -174,7 +200,7 @@ class RSSAnime
             $data['data'][$count]['ep_num']=$epz;
             $data['data'][$count]['link']=$link;
             // GET LIST EPISODE
-            $raw_ep  = $this->SEND($link);
+            $raw_ep  = SEND($link);
             $fd_ep    = voku\helper\HtmlDomParser::str_get_html($raw_ep['body']);
             $get_ep   = $fd_ep->find("div.episodelist > ul > li");
             $countep = 0;
@@ -188,7 +214,7 @@ class RSSAnime
                 $data['data'][$count]['episode'][$countep]['name']=$nama_ep;
                 $data['data'][$count]['episode'][$countep]['link']=$link_ep;
                 // GET DETAILS EPISODE
-                $raw_detail  = $this->SEND($link_ep);
+                $raw_detail  = SEND($link_ep);
                 $fd_dl    = voku\helper\HtmlDomParser::str_get_html($raw_detail['body']);
                 $get_dl   = $fd_dl->find("div.download > ul > li");
                 $countdl=0;
@@ -207,7 +233,7 @@ class RSSAnime
                         $linkdl = $zglink->getAttribute('href');
                         $data['data'][$count]['episode'][$countep]['DL'][$countdl]['link'][$countlink]['name']=$nmser;
                         $data['data'][$count]['episode'][$countep]['DL'][$countdl]['link'][$countlink]['link']=$linkdl;
-                        //$data['data'][$count]['episode'][$countep]['DL'][$countdl]['link'][$countlink]['dl']=$this->link($linkdl);
+                        //$data['data'][$count]['episode'][$countep]['DL'][$countdl]['link'][$countlink]['dl']=link($linkdl);
                         $countlink++;
                         //break;
                     }
@@ -220,161 +246,6 @@ class RSSAnime
             $count++;
             //break;
         }
-        return $data;
-    }
-    private function contains($str, array $arr)
-    {
-        foreach ($arr as $a) {
-            if (strstr($str, $a) !== false) {
-                return true;
-            }
-        }
-        return false;
-    }
-    private function cut_str($str, $left, $right)
-    {
-        $str = substr(stristr($str, $left), strlen($left));
-        $leftLen = strlen(stristr($str, $right));
-        $leftLen = $leftLen ? -($leftLen) : strlen($str);
-        $str = substr($str, 0, $leftLen);
-        return $str;
-    }
-    private function get_headers_from_curl_response($headerContent)
-    {
-        $headers = array();
-        $arrRequests = explode("\r\n\r\n", $headerContent);
-        for ($index = 0; $index < count($arrRequests) - 1; $index++) {
-            foreach (explode("\r\n", $arrRequests[$index]) as $i => $line) {
-                if ($i === 0) {
-                    $headers[$index]['http_code'] = $line;
-                } else {
-                    @list($key, $value) = explode(': ', $line);
-                    $headers[$index][$key] = $value;
-                }
-            }
-        }
-        return $headers;
-    }
-    private function SEND($url, $config = array())
-    {
-        $url = str_replace(' ', '%20', $url);
-        $data = array();
-
-        $dataxp    = @$config['post'];
-        $metode    = @$config['metode'];
-        $addbody   = @$config['body'];
-        $kue       = @$config['cookie'];
-        $ref       = @$config['referer'];
-        $useragent = @$config['user_agent'] ?: "HELLO";
-        $pz        = @$config['header'];
-        $timeout   = @$config['timeout'] ?: 5;
-        $nobody    = @$config['nobody'] ?: false;
-        $proxyme   = @$config['port_proxy'];
-        $pt        = @$config['proxy'];
-        $onssl     = @$config['ssl'] ?: false;
-        @$config['url'] = $url;
-        $readkue   = @$config['readkue'];
-        $savekue   = @$config['savekue'];
-        $showraw   = @$config['raw'];
-
-        try {
-            $c = curl_init($url);
-            curl_setopt($c, CURLOPT_FOLLOWLOCATION, true);
-            curl_setopt($c, CURLOPT_USERAGENT, $useragent);
-            curl_setopt($c, CURLOPT_HEADER, true);
-            curl_setopt($c, CURLOPT_RETURNTRANSFER, true);
-
-            $data['useragent'] = $useragent;
-
-            if ($onssl) {
-                curl_setopt($c, CURLOPT_SSL_VERIFYPEER, 1);
-                curl_setopt($c, CURLOPT_SSL_VERIFYHOST, 2);
-            } else {
-                curl_setopt($c, CURLOPT_SSL_VERIFYPEER, false);
-                curl_setopt($c, CURLOPT_SSL_VERIFYHOST, false);
-            }
-
-            curl_setopt($c, CURLOPT_FRESH_CONNECT, true); // is cache?
-
-            if (!empty($proxyme)) {
-                curl_setopt($c, CURLOPT_PORT, $proxyme);
-            }
-
-            if (!empty($metode)) {
-                curl_setopt($c, CURLOPT_CUSTOMREQUEST, $metode);
-            }
-            if (!empty($addbody)) {
-                curl_setopt($c, CURLOPT_POSTFIELDS, $addbody);
-            }
-
-            if (!empty($dataxp)) {
-                curl_setopt($c, CURLOPT_POST, true);
-                curl_setopt($c, CURLOPT_POSTFIELDS, $dataxp);
-            }
-            if (!empty($ref)) {
-                curl_setopt($c, CURLOPT_REFERER, $ref);
-            }
-
-            if (!empty($kue)) {
-                curl_setopt($c, CURLOPT_COOKIE, $kue);
-            }
-
-            if (!empty($readkue)) {
-                curl_setopt($c, CURLOPT_COOKIEFILE, $readkue);
-            }
-            if (!empty($savekue)) {
-                curl_setopt($c, CURLOPT_COOKIEJAR, $savekue);
-            }
-
-            if (!empty($pt)) {
-                curl_setopt($c, CURLOPT_HTTPPROXYTUNNEL, true);
-                curl_setopt($c, CURLOPT_PROXY, $pt);
-            }
-            if (!empty($timeout)) {
-                curl_setopt($c, CURLOPT_CONNECTTIMEOUT, 0);
-                curl_setopt($c, CURLOPT_TIMEOUT, $timeout);
-                $data['timeout'] = $timeout;
-            }
-            if (!empty($pz)) {
-                curl_setopt($c, CURLOPT_HTTPHEADER, $pz);
-            }
-
-            $datax = curl_exec($c);
-
-            // RAW DATA
-            if ($showraw) {
-                $data['raw'] = $datax;
-            }
-
-            $responseCode = curl_getinfo($c, CURLINFO_HTTP_CODE);
-            $header_len   = curl_getinfo($c, CURLINFO_HEADER_SIZE);
-            $header       = substr($datax, 0, $header_len);
-
-            $data['status'] = "Curl code " . $responseCode . " via " . $url;
-            $data['code'] = $responseCode;
-            if ($responseCode == 0) {
-                $rawerror = curl_error($c);
-                $data['status'] = "Curl Error: " . $rawerror . " via " . $url;
-                $data['error'] = $rawerror;
-            }
-
-            $data['header'] = $this->get_headers_from_curl_response($header);
-
-            if (!$nobody) {
-                //TODO: check body respon
-                $data['body'] = substr($datax, $header_len);
-            }
-
-            $datax = null;
-
-            curl_close($c);
-        } catch (Exception $e) {
-            $data['error'] = $e->getMessage();
-        } catch (InvalidArgumentException $e) {
-            $data['error'] = $e->getMessage();
-        }
-
-        $data['config'] = $config;
         return $data;
     }
 }
