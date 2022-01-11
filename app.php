@@ -97,9 +97,17 @@ class RSSAnime
                                     $fileName = @$setpo['fileName'];
                                     echo "----> DL: $gtrealx ($fileName)" . PHP_EOL;
                                     $linkfd = "dl/$name_nx/";
+                                    // CHECK FOLDER IF NO FOUND MAKE IT
                                     if (!file_exists($linkfd)) {
                                         echo "----> DL: No Found Folder so Make it: $name_nx" . PHP_EOL;
                                         mkdir($linkfd, 0777, true);
+                                    }
+                                    // CHECK IF link.txt found folder start use it
+                                    $checklink = $linkfd."link.txt";
+                                    if (file_exists($checklink)) {
+                                        $linkz = file_get_contents($checklink);
+                                        echo "----> DL: OK FOUND LINK.TXT: $linkz" . PHP_EOL;
+                                        $linkfd = $linkz."/"; // if not found / try add it
                                     }
                                     $spot=$linkfd.$fileName;
                                     if (!file_exists($spot)) {
