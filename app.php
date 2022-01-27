@@ -16,7 +16,7 @@ $set_limit_dl          = @$info['limit_dl'] ?: 1;
 $GoRSS = new RSSAnime();
 
 if ($isdoing == "tes") {
-    print_r($GoRSS->otakudesu());
+    print_r($GoRSS->zippyshare());
 } elseif ($isdoing == "dl") {
     $GoRSS->dl($set_resolution, $set_link_source, $set_limit_dl, $set_limit_ongoing, $set_autodl);
 }
@@ -113,6 +113,7 @@ class RSSAnime
                                     if (!file_exists($spot)) {
                                         $dw = new Downloader($gtrealx, $spot);
                                         $dw->download();
+                                        echo "----> DL: DONE ;)" . PHP_EOL;
                                     } else {
                                         echo "----> DL: file already exists" . PHP_EOL;
                                     }
@@ -136,6 +137,7 @@ class RSSAnime
 
         return "";
     }
+    // https://www85.zippyshare.com/v/ZbBrv80H/file.html - NEW RUMUS " + (902256 % 51245 + 902256 % 913) + "
     public function zippyshare($url="https://www87.zippyshare.com/v/SGTX2ZT5/file.html")
     {
         $data= array();
@@ -152,25 +154,57 @@ class RSSAnime
             $fileName   = $raw_linkz->find("#lrbox > div:nth-child(2) > div:nth-child(1) > font:nth-child(4)")[0]->plaintext;
 
             $data['fileName']=$fileName;
-            //$data['script']=$javaScript;
+            $data['script']=$javaScript;
+            
+            $formula = "";
 
-            // formula javaScript (fix?)
-            $n = cut_str($javaScript, "var n = ", ';');
-            $b = cut_str($javaScript, "var b = ", ';');
-            $z = cut_str($javaScript, "var z = ", ';');
-            //$data['n']=$n;
-            //$data['b']=$b;
-            //$data['z']=$z;
-            $nt = explode('%', $n);
-            $bt = explode('%', $b);
-            $formula = (($nt[0] % $nt[1]) + ($bt[0] % $bt[1]) + $z - 3);
+            // coba trik pertama
+            try {
+                $n = cut_str($javaScript, "var n = ", ';');
+                $b = cut_str($javaScript, "var b = ", ';');
+                $z = cut_str($javaScript, "var z = ", ';');
+                $nt = explode('%', $n);
+                $bt = explode('%', $b);
+                $formula = (($nt[0] % $nt[1]) + ($bt[0] % $bt[1]) + $z - 3);
+            } catch (\Throwable $th) {
+
+                // Coba trik kedua jika gagal
+                try {
+                    $satu = strpos($javaScript, '"+(');
+                    $hasilSatu=substr($javaScript, $satu);
+                    $dua = strpos($hasilSatu, "%");
+                    $hasilDua = substr($hasilSatu, 0, $dua);
+                    $satu = strpos($javaScript, '+"/');
+                    $hasilSatu = substr($javaScript, $satu);
+                    $dua = strpos($hasilSatu, '";');
+                    $hasilDua = substr($hasilSatu, 0, $dua);
+                    $filenameUrl = substr($hasilDua, 3);
+                    $mString = explode("=", $filenameUrl)[1];
+                    $math = explode("+", $mString);
+                    $mathResult = $math[1]."+".$math[2];
+                    $mathResult = substr(trim($mathResult), 1, -1);
+                    $first = explode("+", $mathResult)[0];
+                    $secnd = explode("+", $mathResult)[1];
+                    $fst_res = explode("%", $first)[0];
+                    $sec_res = explode("%", $first)[1];
+                    $tird_res = explode("%", $secnd)[0];
+                    $forth_res = explode("%", $secnd)[1];
+                    $formula = $fst_res % $sec_res + $tird_res % $forth_res;
+                } catch (\Throwable $th) {
+                    //throw $th;
+                }
+            }            
 
             $url = str_replace("/v/", "/d/", $url);
             $url = str_replace("/file.html", "", $url);
-            $url_real = "$url/$formula/$fileName";
+
+            // Jika ada formula
+            if (!empty($formula)) {
+                $url_real = "$url/$formula/$fileName";
+            }
         }
         $data['dl']=$url_real;
-        $data['formula']=$formula;
+        //$data['formula']=$formula;
         return $data;
     }
     public function rapidleech($url="https://www87.zippyshare.com/v/SGTX2ZT5/file.html", $server="https://s2.rapidleech.gq")
@@ -192,8 +226,7 @@ class RSSAnime
     public function otakudesu($limit_ongoing=3, $limit_episode=1)
     {
         $data = array();
-
-        // GET ONGOING
+        // GET ONGOING, TODO: batch mode
         $raw = SEND("https://otakudesu.info/ongoing-anime/");
         $document = voku\helper\HtmlDomParser::str_get_html($raw['body']);
         $list = $document->find("div.venz > ul > li");
@@ -234,20 +267,30 @@ class RSSAnime
                     $type      = $dl->find("strong")[0]->plaintext;
                     $ukur      = $dl->find("i")[0]->plaintext;
                     $ntype     = explode(' ', $type);
-                    $data['data'][$count]['episode'][$countep]['DL'][$countdl]['format']=$ntype[0];
-                    $data['data'][$count]['episode'][$countep]['DL'][$countdl]['resolution']=intval($ntype[1]);
-                    $data['data'][$count]['episode'][$countep]['DL'][$countdl]['size']=$ukur;
+                    
                     // GET LINK DOWNLOAD
                     $dl_linl   = $dl->find("a");
                     $countlink=0;
                     foreach ($dl_linl as $zglink) {
                         $nmser  = $zglink->plaintext;
                         $linkdl = $zglink->getAttribute('href');
-                        $data['data'][$count]['episode'][$countep]['DL'][$countdl]['link'][$countlink]['name']=$nmser;
-                        $data['data'][$count]['episode'][$countep]['DL'][$countdl]['link'][$countlink]['link']=$linkdl;
+                        if (!empty($linkdl)) {
+                            $data['data'][$count]['episode'][$countep]['DL'][$countdl]['link'][$countlink]['name']=$nmser;
+                            $data['data'][$count]['episode'][$countep]['DL'][$countdl]['link'][$countlink]['link']=$linkdl;
+                        }else{
+                            continue;
+                        }
                         //$data['data'][$count]['episode'][$countep]['DL'][$countdl]['link'][$countlink]['dl']=link($linkdl);
                         $countlink++;
                         //break;
+                    }
+                    // jika link
+                    if($countlink >= 1){
+                        $data['data'][$count]['episode'][$countep]['DL'][$countdl]['format']=$ntype[0];
+                        $data['data'][$count]['episode'][$countep]['DL'][$countdl]['resolution']=intval($ntype[1]);
+                        $data['data'][$count]['episode'][$countep]['DL'][$countdl]['size']=$ukur;
+                    }else{
+                        continue;
                     }
                     $countdl++;
                     //break;
