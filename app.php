@@ -16,7 +16,7 @@ $set_limit_dl          = @$info['limit_dl'] ?: 1;
 $GoRSS = new RSSAnime();
 
 if ($isdoing == "tes") {
-    print_r($GoRSS->zippyshare());
+    print_r($GoRSS->otakudesu());
 } elseif ($isdoing == "dl") {
     $GoRSS->dl($set_resolution, $set_link_source, $set_limit_dl, $set_limit_ongoing, $set_autodl);
 }
@@ -61,7 +61,7 @@ class RSSAnime
                     echo "-> $name ($link)" . PHP_EOL;
                     // Format file
                     usort($gdetail['DL'], function ($a, $b) {
-                        return $b['resolution'] <=> $a['resolution'];
+                        return @$b['resolution'] <=> @$a['resolution'];
                     });
                     $tmp_limit_dl=0;
                     foreach ($gdetail['DL'] as $gdl) {
@@ -270,42 +270,53 @@ class RSSAnime
                 $link_ep  = $glink->getAttribute('href');
                 $data['data'][$count]['episode'][$countep]['name']=$nama_ep;
                 $data['data'][$count]['episode'][$countep]['link']=$link_ep;
+                
                 // GET DETAILS EPISODE
                 $raw_detail  = SEND($link_ep);
                 $fd_dl    = voku\helper\HtmlDomParser::str_get_html($raw_detail['body']);
-                $get_dl   = $fd_dl->find("div.download > ul > li");
+
+                $get_dl   = $fd_dl->find("div.download > ul > li > ul > li");
+
+                // jika kosong skip
+                if (empty($get_dl->plaintext)) {
+                    $get_dl   = $fd_dl->find("div.download > ul > li");
+                }
+
                 $countdl=0;
+
                 foreach ($get_dl as $dl) {
+
                     $type      = $dl->find("strong")[0]->plaintext;
                     $ukur      = $dl->find("i")[0]->plaintext;
                     $ntype     = explode(' ', $type);
                     
-                    // GET LINK DOWNLOAD
-                    $dl_linl   = $dl->find("a");
+                    // Count Link
                     $countlink=0;
+
+                    // GET LINK DOWNLOAD
+                    $dl_linl   = $dl->find("a");                    
                     foreach ($dl_linl as $zglink) {
                         $nmser  = $zglink->plaintext;
                         $linkdl = $zglink->getAttribute('href');
+                        // jika tidak ada link skip
                         if (!empty($linkdl)) {
                             $data['data'][$count]['episode'][$countep]['DL'][$countdl]['link'][$countlink]['name']=$nmser;
                             $data['data'][$count]['episode'][$countep]['DL'][$countdl]['link'][$countlink]['link']=$linkdl;
                         }else{
                             continue;
                         }
-                        //$data['data'][$count]['episode'][$countep]['DL'][$countdl]['link'][$countlink]['dl']=link($linkdl);
                         $countlink++;
-                        //break;
                     }
-                    // jika link
+
+                    // Jika Link ada 1 tampil.
                     if($countlink >= 1){
                         $data['data'][$count]['episode'][$countep]['DL'][$countdl]['format']=$ntype[0];
                         $data['data'][$count]['episode'][$countep]['DL'][$countdl]['resolution']=intval($ntype[1]);
-                        $data['data'][$count]['episode'][$countep]['DL'][$countdl]['size']=$ukur;
+                        $data['data'][$count]['episode'][$countep]['DL'][$countdl]['size']=$ukur;                        
                     }else{
                         continue;
-                    }
+                    } 
                     $countdl++;
-                    //break;
                 }
                 $countep++;
                 //break;
