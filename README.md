@@ -3,7 +3,7 @@
 
 Script ini dibuat untuk teman-teman dan saya sendiri yang sibuk dengan dunia coding yang gak punya waktu buat buka web yang banyak iklan fake link download atau main petak umpat (linknya di bikin ribet downloadnya).
 
-## Fitur dan TODO
+## Fitur
 - Bisa pilih/multi Resolution
 - Bisa pilih Sumber link download di mana (misalnya zippyshare dulu) (PS: Sumbernya masih satu)
 - Bisa pilih Sumber situs Animenya download di mana (misalnya otakudesu) (PS: Sumbernya masih satu)
