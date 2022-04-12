@@ -1,4 +1,7 @@
 <?php
+/*
+Script ini dibuat oleh Akbar Yahya (Yuki) dengan style sendiri dan terbuka untuk semuanya untuk modifikasi tapi mohon untuk tidak dijual script ini dan hapus pesan ini, jika saya lihat ada yang hapus atau jual script ini akan saya tutup repo ini untuk umum.
+*/
 function contains($str, array $arr)
 {
     foreach ($arr as $a) {

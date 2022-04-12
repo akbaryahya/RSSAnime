@@ -1,6 +1,6 @@
 {
     "require": {
-        "voku/simple_html_dom": "^4.7",
+        "voku/simple_html_dom": "^4.8",
         "mongodb/mongodb": "^1.9"
     }
 }

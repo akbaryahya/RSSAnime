@@ -1,4 +1,7 @@
 <?php
+/*
+Script ini dibuat oleh Akbar Yahya (Yuki) dengan style sendiri dan terbuka untuk semuanya untuk modifikasi tapi mohon untuk tidak dijual script ini dan hapus pesan ini, jika saya lihat ada yang hapus atau jual script ini akan saya tutup repo ini untuk umum.
+*/
 ini_set('memory_limit', '8G');
 require 'vendor/autoload.php';
 require 'lib/tool.php';
@@ -48,6 +51,8 @@ class RSSAnime
         $source = array();
         $source['source']['otakudesu'] = $this->otakudesu($set_limit_ongoing);
         // Get Source
+        //print_r($source);
+
         foreach ($source['source'] as $gsource) {
             // Get episode
             foreach ($gsource['data'] as $gep) {
