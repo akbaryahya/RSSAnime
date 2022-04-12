@@ -42,8 +42,8 @@ class RSSAnime
     public function __construct($config = null)
     {
         //TODO: add config
-        $this->db = new MongoDB\Client($this->host);
-        $this->DB_DL  = $this->db->dl->link;
+        //$this->db = new MongoDB\Client($this->host);
+        //$this->DB_DL  = $this->db->dl->link;
     }
 
     public function dl($set_resolution="", $set_link_source="", $set_limit_dl=1, $set_limit_ongoing=1, $set_autodl=false)

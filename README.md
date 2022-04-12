@@ -21,9 +21,11 @@ Script ini dibuat untuk teman-teman dan saya sendiri yang sibuk dengan dunia cod
 - Web based Docker
 
 ## Cara Pasang (Windows User)
+- Clone repo ini "git clone https://github.com/akbaryahya/RSSAnime.git" atau download aja zipnya.
 - Download PHP di https://windows.php.net/download/ (V7.4) mau coba pakai V8^ juga bisa atau XAMPP
 - Download Composer di https://getcomposer.org/download/
-- Jangan lupa pastikan curl,cacert dah ada yah
+- Donwload MongoDB di https://www.mongodb.com/try/download/community?tck=docs_server (pastikan file dll juga ada di dalam folder php)
+- Jangan lupa pastikan curl,cacert,mongodb.dll dah ada yah
 - Jangan lupa di dalam folder buat juga folder "dl" karena nanti di sini file animenya di save
 
 Setelah itu buka folder lalu klik kanan lalu pilih Windows Terminal (kalau Pakai Windows 11,sebut aja cmd)
@@ -37,6 +39,8 @@ Sudah itu kamu bisa pakai sekarang dengan ketik
 ```sh
 php app.php --doing dl --resolution 1080,720 --link_source ZippyShare --limit_ongoing 10 --autodl true
 ```
+
+Note: Kalau mau di bikin auto download setiap jam 3 pagi bisa coba bikin file run.bat lalu kasih masuk yang di atas tadi lalu bikin job pakai Task Scheduler,lengkapnya https://stackoverflow.com/a/13173752 .
 
 ## HELP
 | Fungsi | KET |
