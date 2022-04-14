@@ -6,22 +6,33 @@ ini_set('memory_limit', '8G');
 require 'vendor/autoload.php';
 require 'lib/tool.php';
 
-$info = getopt("", ["doing:","resolution:","link_source:",'limit_ongoing:','limit_dl:','autodl:']);
+// Config file
+if (!file_exists("config.php")) {
+    require 'config.sampel.php';
+}else{
+    require 'config.php';
+}
+
+$info = getopt("", ["doing:","resolution:","link_source:",'limit_ongoing:','limit_dl:','autodl:','notif:']);
 
 $isdoing         = @$info['doing'];
 $set_resolution  = @$info['resolution'];
 $set_link_source = @$info['link_source'];
 $set_autodl      = @$info['autodl'] ?: false;
-
+$set_notif       = @$info['notif'] ?: false;
 $set_limit_ongoing     = @$info['limit_ongoing'] ?: 1;
 $set_limit_dl          = @$info['limit_dl'] ?: 1;
 
-$GoRSS = new RSSAnime();
+$GoRSS = new RSSAnime($config);
 
-if ($isdoing == "tes") {
-    print_r($GoRSS->otakudesu());
+if ($isdoing == "tes123") {
+
+    //print_r($GoRSS->otakudesu());
+    $raww = Bot::DiscordWbhooks($config['Discord_Wbhooks'],array("content" => "HOLA", "username" => "Bot"));
+    print_r($raww);
+
 } elseif ($isdoing == "dl") {
-    $GoRSS->dl($set_resolution, $set_link_source, $set_limit_dl, $set_limit_ongoing, $set_autodl);
+    $GoRSS->dl($set_resolution, $set_link_source, $set_limit_dl, $set_limit_ongoing, $set_autodl,$set_notif);
 }
 
 /*
@@ -39,21 +50,28 @@ class RSSAnime
     private $DB_DL;
     private $host = "mongodb://localhost:27017";
 
+    private $config;
+
     public function __construct($config = null)
     {
-        //TODO: add config
+        $this->config = $config;
         //$this->db = new MongoDB\Client($this->host);
         //$this->DB_DL  = $this->db->dl->link;
     }
 
-    public function dl($set_resolution="", $set_link_source="", $set_limit_dl=1, $set_limit_ongoing=1, $set_autodl=false)
+    public function dl($set_resolution="", $set_link_source="", $set_limit_dl=1, $set_limit_ongoing=1, $set_autodl=false,$set_notif=false)
     {
         $source = array();
         $source['source']['otakudesu'] = $this->otakudesu($set_limit_ongoing);
-        // Get Source
-        //print_r($source);
 
+        // Get Source
         foreach ($source['source'] as $gsource) {
+            if (empty(@$gsource['data'])) {
+                //print_r($source);
+                echo "Error:".$gsource['error']['status'];
+                continue; // skip source
+            }
+
             // Get episode
             foreach ($gsource['data'] as $gep) {
                 // Get Format
@@ -70,7 +88,6 @@ class RSSAnime
                     });
                     $tmp_limit_dl=0;
                     foreach ($gdetail['DL'] as $gdl) {
-
                         $format = $gdl['format'];
                         $resolu = $gdl['resolution'];
 
@@ -101,10 +118,9 @@ class RSSAnime
                             }
                             echo "---> $lname ($llink)" . PHP_EOL;
                             if ((bool)$set_autodl == true) {
-                                $setpo   = @$this->link($llink);
+                                $setpo   = @$this->link($llink); //TODO: buat cek ini hanya jika belum ada filenya jadi gak kena rate limit
                                 $gtrealx = @$setpo['dl'];
                                 if (!empty($gtrealx)) {
-
                                     $tmp_limit_dl++;
 
                                     $fileName = @$setpo['fileName'];
@@ -126,20 +142,44 @@ class RSSAnime
                                     }
                                     
                                     $spot=$linkfd.$fileName;
+                                    $send_notif=true;
+
+                                    // Downloader
                                     if (!file_exists($spot)) {
                                         $dw = new Downloader($gtrealx, $spot);
                                         $dw->download();
-                                        echo "----> DL: DONE ;)" . PHP_EOL;                                        
+                                        echo "----> DL: DONE ;)" . PHP_EOL;
                                     } else {
                                         echo "----> DL: file already exists" . PHP_EOL;
+                                        $send_notif=false; //for debug
+                                    }
+
+                                    if ($send_notif) {
+                                        if ($set_notif) {
+
+                                            echo "-----> Start Send Notifications" . PHP_EOL;
+
+                                            // Tambah URL Server, agar bisa di akses lewat cloud server?
+                                            if (!empty(@$this->config['Server_URL_Local'])) {
+                                                if (!file_exists($checklink)) {
+                                                    // Localhost
+                                                    $spot=$this->config['Server_URL_Local'].$spot;
+                                                } else {
+                                                    // Cloud Server, skip
+                                                }
+                                            }
+
+                                            if (!empty(@$this->config['Discord_Wbhooks'])) {
+                                                echo "------> Send to Discord" . PHP_EOL;
+                                                Bot::DiscordWbhooks($this->config['Discord_Wbhooks'],array("content" => "Anime dengan judul $name sudah selesai di download, link-nya untuk nonton-nya $spot", "username" => "Bot"));
+                                            }
+                                        }
                                     }
                                 } else {
                                     echo "----> DL: No Found" . PHP_EOL;
                                 }
                             }
-
                         }
-
                     }
                 }
             }
@@ -210,7 +250,7 @@ class RSSAnime
                 } catch (\Throwable $th) {
                     //throw $th;
                 }
-            }            
+            }
 
             $url = str_replace("/v/", "/d/", $url);
             $url = str_replace("/file.html", "", $url);
@@ -290,7 +330,6 @@ class RSSAnime
                 $countdl=0;
 
                 foreach ($get_dl as $dl) {
-
                     $type      = $dl->find("strong")[0]->plaintext;
                     $ukur      = $dl->find("i")[0]->plaintext;
                     $ntype     = explode(' ', $type);
@@ -299,7 +338,7 @@ class RSSAnime
                     $countlink=0;
 
                     // GET LINK DOWNLOAD
-                    $dl_linl   = $dl->find("a");                    
+                    $dl_linl   = $dl->find("a");
                     foreach ($dl_linl as $zglink) {
                         $nmser  = $zglink->plaintext;
                         $linkdl = $zglink->getAttribute('href');
@@ -307,20 +346,20 @@ class RSSAnime
                         if (!empty($linkdl)) {
                             $data['data'][$count]['episode'][$countep]['DL'][$countdl]['link'][$countlink]['name']=$nmser;
                             $data['data'][$count]['episode'][$countep]['DL'][$countdl]['link'][$countlink]['link']=$linkdl;
-                        }else{
+                        } else {
                             continue;
                         }
                         $countlink++;
                     }
 
                     // Jika Link ada 1 tampil.
-                    if($countlink >= 1){
+                    if ($countlink >= 1) {
                         $data['data'][$count]['episode'][$countep]['DL'][$countdl]['format']=$ntype[0];
                         $data['data'][$count]['episode'][$countep]['DL'][$countdl]['resolution']=intval($ntype[1]);
-                        $data['data'][$count]['episode'][$countep]['DL'][$countdl]['size']=$ukur;                        
-                    }else{
+                        $data['data'][$count]['episode'][$countep]['DL'][$countdl]['size']=$ukur;
+                    } else {
                         continue;
-                    } 
+                    }
                     $countdl++;
                 }
                 $countep++;
@@ -328,6 +367,9 @@ class RSSAnime
             }
             $count++;
             //break;
+        }
+        if($count == 0){
+            $data['error'] = $raw;
         }
         return $data;
     }

@@ -157,6 +157,18 @@ function SEND($url, $config = array())
     $data['config'] = $config;
     return $data;
 }
+class Bot
+{
+    public static function DiscordWbhooks($url, $body)
+    {
+        $raw = SEND($url, array(
+        'metode' => "POST",
+        'header'=>[ 'Content-Type: application/json; charset=utf-8' ],
+        'post' => json_encode($body)
+    ));
+        return $raw;
+    }
+}
 class Downloader
 {
     /**
