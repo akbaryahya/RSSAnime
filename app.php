@@ -9,7 +9,7 @@ require 'lib/tool.php';
 // Config file
 if (!file_exists("config.php")) {
     require 'config.sampel.php';
-}else{
+} else {
     require 'config.php';
 }
 
@@ -26,13 +26,11 @@ $set_limit_dl          = @$info['limit_dl'] ?: 1;
 $GoRSS = new RSSAnime($config);
 
 if ($isdoing == "tes123") {
-
-    //print_r($GoRSS->otakudesu());
-    $raww = Bot::DiscordWbhooks($config['Discord_Wbhooks'],array("content" => "HOLA", "username" => "Bot"));
-    print_r($raww);
-
+    print_r($GoRSS->desudrive());
+//$raww = Bot::DiscordWbhooks($config['Discord_Wbhooks'],array("content" => "HOLA", "username" => "Bot"));
+    //print_r($raww);
 } elseif ($isdoing == "dl") {
-    $GoRSS->dl($set_resolution, $set_link_source, $set_limit_dl, $set_limit_ongoing, $set_autodl,$set_notif);
+    $GoRSS->dl($set_resolution, $set_link_source, $set_limit_dl, $set_limit_ongoing, $set_autodl, $set_notif);
 }
 
 /*
@@ -59,7 +57,7 @@ class RSSAnime
         //$this->DB_DL  = $this->db->dl->link;
     }
 
-    public function dl($set_resolution="", $set_link_source="", $set_limit_dl=1, $set_limit_ongoing=1, $set_autodl=false,$set_notif=false)
+    public function dl($set_resolution="", $set_link_source="", $set_limit_dl=1, $set_limit_ongoing=1, $set_autodl=false, $set_notif=false)
     {
         $source = array();
         $source['source']['otakudesu'] = $this->otakudesu($set_limit_ongoing);
@@ -127,6 +125,9 @@ class RSSAnime
                                     echo "----> DL: $gtrealx ($fileName)" . PHP_EOL;
                                     $linkfd = "dl/$name_nx/";
 
+                                    // some stupid judul
+                                    $linkfd = str_replace(".", "", $linkfd);
+
                                     // CHECK FOLDER IF NO FOUND MAKE IT
                                     if (!file_exists($linkfd)) {
                                         echo "----> DL: No Found Folder so Make it: $name_nx" . PHP_EOL;
@@ -156,7 +157,6 @@ class RSSAnime
 
                                     if ($send_notif) {
                                         if ($set_notif) {
-
                                             echo "-----> Start Send Notifications" . PHP_EOL;
 
                                             // Tambah URL Server, agar bisa di akses lewat cloud server?
@@ -171,7 +171,7 @@ class RSSAnime
 
                                             if (!empty(@$this->config['Discord_Wbhooks'])) {
                                                 echo "------> Send to Discord" . PHP_EOL;
-                                                Bot::DiscordWbhooks($this->config['Discord_Wbhooks'],array("content" => "Anime dengan judul $name sudah selesai di download, link-nya untuk nonton-nya $spot", "username" => "Bot"));
+                                                Bot::DiscordWbhooks($this->config['Discord_Wbhooks'], array("content" => "Anime dengan judul $name sudah selesai di download, link-nya untuk nonton-nya $spot", "username" => "Bot"));
                                             }
                                         }
                                     }
@@ -188,21 +188,35 @@ class RSSAnime
 
     public function link($url)
     {
+        // wtf
+        $body = "";
+        if (strpos($url, 'desudrive') !== false) {
+            $body = $this->desudrive($url);
+            $url = $body['header'][0]['location'];
+        }
+
         if (strpos($url, 'zippyshare') !== false) {
-            return $this->zippyshare($url);
+            return $this->zippyshare($url, $body);
         }
 
         return "";
     }
+    public function desudrive($url="https://desudrive.com/go/?id=NkVNRnlNQjM4OUk5cTFZRVRyc3hDS01uWDMwbVRaY0YzOUZpVTdCWHdkRTFOL2hqbFNudmZraXJvc1ZVU1JWZyt3PT0=")
+    {
+        return SEND($url);
+    }
     // https://www85.zippyshare.com/v/ZbBrv80H/file.html - NEW RUMUS " + (902256 % 51245 + 902256 % 913) + "
-    public function zippyshare($url="https://www87.zippyshare.com/v/SGTX2ZT5/file.html")
+    public function zippyshare($url="https://www87.zippyshare.com/v/SGTX2ZT5/file.html", $raw="")
     {
         $data= array();
         $data['url']=$url;
         $url_real="";
 
         // GET POST
-        $raw = SEND($url);
+        if (empty($raw)) {
+            $raw = SEND($url);
+        }
+    
         if ($raw['code']==200) {
             $raw_body = $raw['body'];
             // GET HTML
@@ -368,7 +382,7 @@ class RSSAnime
             $count++;
             //break;
         }
-        if($count == 0){
+        if ($count == 0) {
             $data['error'] = $raw;
         }
         return $data;
