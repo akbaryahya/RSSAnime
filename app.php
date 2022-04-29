@@ -199,6 +199,8 @@ class RSSAnime
             return $this->zippyshare($url, $body);
         }
 
+        sleep(15);
+
         return "";
     }
     public function desudrive($url="https://desudrive.com/go/?id=NkVNRnlNQjM4OUk5cTFZRVRyc3hDS01uWDMwbVRaY0YzOUZpVTdCWHdkRTFOL2hqbFNudmZraXJvc1ZVU1JWZyt3PT0=")
