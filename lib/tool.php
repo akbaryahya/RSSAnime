@@ -43,9 +43,9 @@ function SEND($url, $config = array())
     $dataxp    = @$config['post'];
     $metode    = @$config['metode'];
     $addbody   = @$config['body'];
-    $kue       = @$config['cookie'];
-    $ref       = @$config['referer'];
-    $useragent = @$config['user_agent'] ?: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36 Edg/100.0.1185.50";
+    $kue       = @$config['cookie'] ?: "cf_clearance=TnuowItX.IdP_qIy3FoYRQU4lDK.gYpT0lWQv1_DzUw-1652339724-0-150;cf_chl_2=881a525ac3beb89; cf_chl_prog=x10; cf_clearance=Eevm8nPASwK5XRi8oiyK1KqlhSisFhmBnULSgnN.oc4-1652649291-0-150";
+    $ref       = @$config['referer'] ? : "https://otakudesu.tube/ongoing-anime/";
+    $useragent = @$config['user_agent'] ?: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.54 Safari/537.36 Edg/101.0.1210.39";
     $pz        = @$config['header'];
     $timeout   = @$config['timeout'] ?: 5;
     $nobody    = @$config['nobody'] ?: false;

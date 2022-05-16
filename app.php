@@ -26,7 +26,7 @@ $set_limit_dl          = @$info['limit_dl'] ?: 1;
 $GoRSS = new RSSAnime($config);
 
 if ($isdoing == "tes123") {
-    print_r($GoRSS->desudrive());
+    print_r($GoRSS->desudrive("https://desudrive.com/link/?id=aG8wYXVQVmpMRmFqem9hOStNZlBreS9IU3FNRFNlbjEvTTdmakdLbk90YU1pUitGN2FlbE1VUUdubWprTDFNYkxmZz0="));
 //$raww = Bot::DiscordWbhooks($config['Discord_Wbhooks'],array("content" => "HOLA", "username" => "Bot"));
     //print_r($raww);
 } elseif ($isdoing == "dl") {
@@ -138,8 +138,12 @@ class RSSAnime
                                     $checklink = $linkfd."link.txt";
                                     if (file_exists($checklink)) {
                                         $linkz = file_get_contents($checklink);
-                                        echo "----> DL: OK FOUND LINK.TXT: $linkz" . PHP_EOL;
-                                        $linkfd = $linkz."/"; // if not found / try add it
+                                        if (file_exists($linkz)) {
+                                            echo "----> DL: OK FOUND LINK.TXT: $linkz" . PHP_EOL;
+                                            $linkfd = $linkz."/"; // if not found / try add it
+                                        }else{
+                                            echo "----> DL: Failed to find link, so failback.." . PHP_EOL;
+                                        }
                                     }
                                     
                                     $spot=$linkfd.$fileName;
@@ -300,7 +304,7 @@ class RSSAnime
     {
         $data = array();
         // GET ONGOING, TODO: batch mode
-        $raw = SEND("https://otakudesu.info/ongoing-anime/");
+        $raw = SEND("https://otakudesu.tube/ongoing-anime/page/2");
         $document = voku\helper\HtmlDomParser::str_get_html($raw['body']);
         $list = $document->find("div.venz > ul > li");
         $count=0;
