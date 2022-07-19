@@ -37,7 +37,7 @@ php composer.phar update
 Sudah itu kamu bisa pakai sekarang dengan ketik
 
 ```sh
-php app.php --doing dl --resolution 1080,720 --link_source ZippyShare --limit_ongoing 10 --autodl true
+php app.php --doing dl --resolution 1080,720 --link_source ZippyShare,Zippy --limit_ongoing 2 --autodl true
 ```
 
 Note: Kalau mau di bikin auto download setiap jam 3 pagi bisa coba bikin file run.bat lalu kasih masuk yang di atas tadi lalu bikin job pakai Task Scheduler,lengkapnya https://stackoverflow.com/a/13173752 .

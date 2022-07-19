@@ -2,6 +2,7 @@
 /*
 Script ini dibuat oleh Akbar Yahya (Yuki) dengan style sendiri dan terbuka untuk semuanya untuk modifikasi tapi mohon untuk tidak dijual script ini dan hapus pesan ini, jika saya lihat ada yang hapus atau jual script ini akan saya tutup repo ini untuk umum.
 */
+
 ini_set('memory_limit', '8G');
 require 'vendor/autoload.php';
 require 'lib/tool.php';
@@ -13,35 +14,26 @@ if (!file_exists("config.php")) {
     require 'config.php';
 }
 
-$info = getopt("", ["doing:","resolution:","link_source:",'limit_ongoing:','limit_dl:','autodl:','notif:']);
+$info = getopt("", ["doing:","resolution:","link_source:",'limit_ongoing:','limit_dl:','autodl:','notif:','pages:']);
 
 $isdoing         = @$info['doing'];
 $set_resolution  = @$info['resolution'];
 $set_link_source = @$info['link_source'];
 $set_autodl      = @$info['autodl'] ?: false;
 $set_notif       = @$info['notif'] ?: false;
-$set_limit_ongoing     = @$info['limit_ongoing'] ?: 1;
-$set_limit_dl          = @$info['limit_dl'] ?: 1;
+$set_limit_ongoing = @$info['limit_ongoing'] ?: 1;
+$set_limit_dl = @$info['limit_dl'] ?: 1;
+$set_pages = @$info['pages'] ?: 1;
 
 $GoRSS = new RSSAnime($config);
 
 if ($isdoing == "tes123") {
-    print_r($GoRSS->desudrive("https://desudrive.com/link/?id=aG8wYXVQVmpMRmFqem9hOStNZlBreS9IU3FNRFNlbjEvTTdmakdLbk90YU1pUitGN2FlbE1VUUdubWprTDFNYkxmZz0="));
+    print_r($GoRSS->zippyshare());
 //$raww = Bot::DiscordWbhooks($config['Discord_Wbhooks'],array("content" => "HOLA", "username" => "Bot"));
     //print_r($raww);
 } elseif ($isdoing == "dl") {
-    $GoRSS->dl($set_resolution, $set_link_source, $set_limit_dl, $set_limit_ongoing, $set_autodl, $set_notif);
+    $GoRSS->dl($set_resolution, $set_link_source, $set_limit_dl, $set_limit_ongoing, $set_autodl, $set_notif, $set_pages);
 }
-
-/*
-$n = "595030%2";
-$b = "595030%3";
-$z = "595033";
-$nt = explode('%', $n);
-$bt = explode('%', $b);
-echo(($nt[0] % $nt[1]) + ($bt[0] % $bt[1]) + $z - 3);
-*/
-//nilai asli 595031
 
 class RSSAnime
 {
@@ -57,10 +49,10 @@ class RSSAnime
         //$this->DB_DL  = $this->db->dl->link;
     }
 
-    public function dl($set_resolution="", $set_link_source="", $set_limit_dl=1, $set_limit_ongoing=1, $set_autodl=false, $set_notif=false)
+    public function dl($set_resolution="", $set_link_source="", $set_limit_dl=1, $set_limit_ongoing=1, $set_autodl=false, $set_notif=false, $set_pages=1)
     {
         $source = array();
-        $source['source']['otakudesu'] = $this->otakudesu($set_limit_ongoing);
+        $source['source']['otakudesu'] = $this->otakudesu($set_limit_ongoing, 1, $set_pages);
 
         // Get Source
         foreach ($source['source'] as $gsource) {
@@ -123,7 +115,7 @@ class RSSAnime
 
                                     $fileName = @$setpo['fileName'];
                                     echo "----> DL: $gtrealx ($fileName)" . PHP_EOL;
-                                    $linkfd = "dl/$name_nx/";
+                                    $linkfd = @$this->config['Folder']."/$name_nx/";
 
                                     // some stupid judul
                                     $linkfd = str_replace(".", "", $linkfd);
@@ -141,7 +133,7 @@ class RSSAnime
                                         if (file_exists($linkz)) {
                                             echo "----> DL: OK FOUND LINK.TXT: $linkz" . PHP_EOL;
                                             $linkfd = $linkz."/"; // if not found / try add it
-                                        }else{
+                                        } else {
                                             echo "----> DL: Failed to find link, so failback.." . PHP_EOL;
                                         }
                                     }
@@ -192,8 +184,8 @@ class RSSAnime
 
     public function link($url)
     {
-        // wtf
         $body = "";
+
         if (strpos($url, 'desudrive') !== false) {
             $body = $this->desudrive($url);
             $url = $body['header'][0]['location'];
@@ -203,16 +195,16 @@ class RSSAnime
             return $this->zippyshare($url, $body);
         }
 
-        sleep(15);
+        //sleep(15);
 
         return "";
     }
-    public function desudrive($url="https://desudrive.com/go/?id=NkVNRnlNQjM4OUk5cTFZRVRyc3hDS01uWDMwbVRaY0YzOUZpVTdCWHdkRTFOL2hqbFNudmZraXJvc1ZVU1JWZyt3PT0=")
+    public function desudrive($url="")
     {
         return SEND($url);
     }
-    // https://www85.zippyshare.com/v/ZbBrv80H/file.html - NEW RUMUS " + (902256 % 51245 + 902256 % 913) + "
-    public function zippyshare($url="https://www87.zippyshare.com/v/SGTX2ZT5/file.html", $raw="")
+    
+    public function zippyshare($url="", $raw="")
     {
         $data= array();
         $data['url']=$url;
@@ -222,6 +214,8 @@ class RSSAnime
         if (empty($raw)) {
             $raw = SEND($url);
         }
+
+        $formula = "";
     
         if ($raw['code']==200) {
             $raw_body = $raw['body'];
@@ -231,21 +225,43 @@ class RSSAnime
             $fileName   = $raw_linkz->find("#lrbox > div:nth-child(2) > div:nth-child(1) > font:nth-child(4)")[0]->plaintext;
 
             $data['fileName']=$fileName;
-            $data['script']=$javaScript;
-            
-            $formula = "";
+            //$data['script']=$javaScript;
 
-            // coba trik pertama
-            try {
-                $n = cut_str($javaScript, "var n = ", ';');
-                $b = cut_str($javaScript, "var b = ", ';');
-                $z = cut_str($javaScript, "var z = ", ';');
+            $n = @cut_str($javaScript, "var n = ", ';');
+            $b = @cut_str($javaScript, "var b = ", ';');
+            $z = @cut_str($javaScript, "var z = ", ';');
+            $a = @cut_str($javaScript, "var a = ", ';');
+
+            $data['var']["a"]=$a;
+            $data['var']["n"]=$n;
+            $data['var']["b"]=$b;
+            $data['var']["z"]=$z;
+
+            // trik ke 3
+            // https://www120.zippyshare.com/v/A7r4JeCz/file.html - "+(Math.pow(113, 3)+3)+"
+            if (str_contains($javaScript, 'asdasd')) {
+                $formula = (pow($a, 3)+3);
+            }
+
+            // trik pertama
+            /*
+             $n = "595030%2";
+             $b = "595030%3";
+             $z = "595033";
+             $nt = explode('%', $n);
+             $bt = explode('%', $b);
+             echo(($nt[0] % $nt[1]) + ($bt[0] % $bt[1]) + $z - 3);
+             */
+            //nilai asli 595031
+            if (!empty($n)) {
                 $nt = explode('%', $n);
                 $bt = explode('%', $b);
                 $formula = (($nt[0] % $nt[1]) + ($bt[0] % $bt[1]) + $z - 3);
-            } catch (\Throwable $th) {
+            }
 
-                // Coba trik kedua jika gagal
+            // trik kedua
+            // https://www85.zippyshare.com/v/ZbBrv80H/file.html - "+(902256 % 51245 + 902256 % 913)+"
+            if (empty($formula)) {
                 try {
                     $satu = strpos($javaScript, '"+(');
                     $hasilSatu=substr($javaScript, $satu);
@@ -274,14 +290,17 @@ class RSSAnime
 
             $url = str_replace("/v/", "/d/", $url);
             $url = str_replace("/file.html", "", $url);
-
-            // Jika ada formula
-            if (!empty($formula)) {
-                $url_real = "$url/$formula/$fileName";
-            }
         }
+
+        if (!empty($formula)) {
+            $url_real = "$url/$formula/$fileName";
+        } else {
+            $data['raw']=$raw;
+        }
+
         $data['dl']=$url_real;
-        //$data['formula']=$formula;
+        $data['formula']=$formula;
+        
         return $data;
     }
     public function rapidleech($url="https://www87.zippyshare.com/v/SGTX2ZT5/file.html", $server="https://s2.rapidleech.gq")
@@ -300,11 +319,11 @@ class RSSAnime
         ));
         return $raw;
     }
-    public function otakudesu($limit_ongoing=3, $limit_episode=1)
+    public function otakudesu($limit_ongoing=3, $limit_episode=1, $pages=1)
     {
         $data = array();
         // GET ONGOING, TODO: batch mode
-        $raw = SEND("https://otakudesu.tube/ongoing-anime/page/2");
+        $raw = SEND("https://otakudesu.tube/ongoing-anime/page/$pages/");
         $document = voku\helper\HtmlDomParser::str_get_html($raw['body']);
         $list = $document->find("div.venz > ul > li");
         $count=0;
