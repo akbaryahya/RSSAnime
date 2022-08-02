@@ -225,12 +225,15 @@ class RSSAnime
             $fileName   = $raw_linkz->find("#lrbox > div:nth-child(2) > div:nth-child(1) > font:nth-child(4)")[0]->plaintext;
 
             $data['fileName']=$fileName;
-            //$data['script']=$javaScript;
+            $data['script']=$javaScript;
+
+            $a = @cut_str($javaScript, "var a = ", ';');
+            $b = @cut_str($javaScript, "var b = ", ';');
+            $c = @cut_str($javaScript, "var c = ", ';');
+            $d = @cut_str($javaScript, "var d = ", ';');
 
             $n = @cut_str($javaScript, "var n = ", ';');
-            $b = @cut_str($javaScript, "var b = ", ';');
             $z = @cut_str($javaScript, "var z = ", ';');
-            $a = @cut_str($javaScript, "var a = ", ';');
 
             $data['var']["a"]=$a;
             $data['var']["n"]=$n;
@@ -241,6 +244,20 @@ class RSSAnime
             // https://www120.zippyshare.com/v/A7r4JeCz/file.html - "+(Math.pow(113, 3)+3)+"
             if (str_contains($javaScript, 'asdasd')) {
                 $formula = (pow($a, 3)+3);
+            }
+
+            // trik ke 4
+            // https://www56.zippyshare.com/v/lBXjKn8l/file.html - (777772%1000 + 10 + 5/5)
+            if (str_contains($javaScript, '%1000')) {
+
+                $satu = strpos($javaScript, '"+(');                
+                $hasilSatu=substr($javaScript, $satu);
+
+                $dua = strpos($hasilSatu, "%");
+                $hasilDua = substr($hasilSatu, 3, $dua);
+
+                $fst_res = explode("%", $hasilDua)[0];
+                $formula = ($fst_res%1000 + 10 + 5/5);
             }
 
             // trik pertama
@@ -295,7 +312,7 @@ class RSSAnime
         if (!empty($formula)) {
             $url_real = "$url/$formula/$fileName";
         } else {
-            $data['raw']=$raw;
+            //$data['raw']=$raw;
         }
 
         $data['dl']=$url_real;
