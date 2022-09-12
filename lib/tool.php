@@ -43,9 +43,9 @@ function SEND($url, $config = array())
     $dataxp    = @$config['post'];
     $metode    = @$config['metode'];
     $addbody   = @$config['body'];
-    $kue       = @$config['cookie'] ?: "";
+    $kue       = @$config['cookie'] ?: "cf_clearance=P5g72IwOdnJ5P3o_HejZKY_fx2OTwPCf44IvBBWDLGM-1655792369-0-150";
     $ref       = @$config['referer'] ? : "";
-    $useragent = @$config['user_agent'] ?: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.5060.114 Safari/537.36 Edg/103.0.1264.49";
+    $useragent = @$config['user_agent'] ?: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36 Edg/105.0.1343.27";
     $pz        = @$config['header'];
     $timeout   = @$config['timeout'] ?: 5;
     $nobody    = @$config['nobody'] ?: false;
